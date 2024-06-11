@@ -1710,7 +1710,7 @@ const describeFields = (name, structure, combineReducers, setup) => {
       expect(fields.customBooleanFlag).toBe(true)
     })
 
-    it('should provide correct prop structure after names change', () => {
+    it('should provide correct prop structure after names change', async () => {
       const store = makeStore()
       const renderFields = jest.fn(() => <div />)
       class Form extends Component {
@@ -1745,7 +1745,10 @@ const describeFields = (name, structure, combineReducers, setup) => {
       )
 
       const button = TestUtils.findRenderedDOMComponentWithTag(dom, 'button')
-      TestUtils.Simulate.click(button)
+      await TestUtils.act(() => {
+        TestUtils.Simulate.click(button)
+      })
+
       expect(renderFields).toHaveBeenCalled()
       expect(renderFields).toHaveBeenCalledTimes(2)
       const fields = renderFields.mock.calls[1][0]
