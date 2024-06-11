@@ -2,6 +2,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
+import { memoize } from 'lodash'
 import createFieldProps from './createFieldProps'
 import plain from './structure/plain'
 import onChangeValue from './events/onChangeValue'
@@ -9,12 +10,11 @@ import type { ElementRef } from 'react'
 import type { Structure } from './types.js.flow'
 import type { Props } from './ConnectedFields.types'
 import validateComponentProp from './util/validateComponentProp'
-import _ from 'lodash'
 
 const propsToNotUpdateFor = ['_reduxForm']
 
 export default function createConnectedFields(structure: Structure<any, any>) {
-  const { deepEqual, getIn, size } = structure
+  const { deepEqual, getIn } = structure
 
   const getSyncError = (syncErrors: Object, name: string) => {
     // Because the error for this field might not be at a level in the error structure where
@@ -66,7 +66,7 @@ export default function createConnectedFields(structure: Structure<any, any>) {
       return this.ref.current
     }
 
-    handleChange = _.memoize((name: string) => (event: any): void => {
+    handleChange = memoize((name: string) => (event: any): void => {
       const { dispatch, parse, _reduxForm } = this.props
       const value = onChangeValue(event, { name, parse })
 
@@ -78,12 +78,12 @@ export default function createConnectedFields(structure: Structure<any, any>) {
       }
     })
 
-    handleFocus = _.memoize((name: string) => () => {
+    handleFocus = memoize((name: string) => () => {
       const { dispatch, _reduxForm } = this.props
       dispatch(_reduxForm.focus(name))
     })
 
-    handleBlur = _.memoize((name: string) => (event: any): void => {
+    handleBlur = memoize((name: string) => (event: any): void => {
       const { dispatch, parse, _reduxForm } = this.props
       const value = onChangeValue(event, { name, parse })
 
