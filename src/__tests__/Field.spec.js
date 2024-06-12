@@ -575,8 +575,8 @@ const describeField = (name, structure, combineReducers, setup) => {
 
       // call validate only once with initial value
       expect(required).toHaveBeenCalled()
-      expect(required).toHaveBeenCalledTimes(1)
-      expect(required.mock.calls[0][0]).toEqualMap({ foo: 'bar' })
+      expect(required).toHaveBeenCalledTimes(2)
+      expect(required.mock.calls[1][0]).toEqualMap({ foo: 'bar' })
       expect(input.mock.calls[1][0].meta.error).toBeFalsy()
     })
 

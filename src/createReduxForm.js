@@ -306,42 +306,13 @@ export default function createReduxForm(structure: Structure<any, any>) {
         lastFieldWarnerKeys = []
         innerOnSubmit = undefined
         submitPromise = undefined
-        initializedOnLoad = false
 
-        constructor(...args) {
-          super(...args)
-          if (!isHotReloading()) {
-            this.initializedOnLoad = this.initIfNeeded()
-          }
+        constructor(props, ...args) {
+          super(props, ...args)
           invariant(
             this.props.shouldValidate,
             'shouldValidate() is deprecated and will be removed in v9.0.0. Use shouldWarn() or shouldError() instead.'
           )
-        }
-
-        initIfNeeded = (nextProps: ?PropsWithContext): boolean => {
-          const { enableReinitialize } = this.props
-          if (nextProps) {
-            if (
-              (enableReinitialize || !nextProps.initialized) &&
-              !deepEqual(this.props.initialValues, nextProps.initialValues)
-            ) {
-              const keepDirty = nextProps.initialized && this.props.keepDirtyOnReinitialize
-              this.props.initialize(nextProps.initialValues, keepDirty, {
-                keepValues: nextProps.keepValues,
-                lastInitialValues: this.props.initialValues,
-                updateUnregisteredFields: nextProps.updateUnregisteredFields
-              })
-              return true
-            }
-          } else if (this.props.initialValues && (!this.props.initialized || enableReinitialize)) {
-            this.props.initialize(this.props.initialValues, this.props.keepDirtyOnReinitialize, {
-              keepValues: this.props.keepValues,
-              updateUnregisteredFields: this.props.updateUnregisteredFields
-            })
-            return true
-          }
-          return false
         }
 
         updateSyncErrorsIfNeeded = (
@@ -361,21 +332,6 @@ export default function createReduxForm(structure: Structure<any, any>) {
           }
         }
 
-        clearSubmitPromiseIfNeeded = (nextProps: PropsWithContext): void => {
-          const { submitting } = this.props
-          if (this.submitPromise && submitting && !nextProps.submitting) {
-            delete this.submitPromise
-          }
-        }
-
-        submitIfNeeded = (nextProps: PropsWithContext): void => {
-          const { clearSubmit, triggerSubmit } = this.props
-          if (!triggerSubmit && nextProps.triggerSubmit) {
-            clearSubmit()
-            this.submit()
-          }
-        }
-
         shouldErrorFunction = (): ShouldValidateFunction | ShouldErrorFunction => {
           const { shouldValidate, shouldError } = this.props
           const shouldValidateOverridden = shouldValidate !== defaultShouldValidate
@@ -384,8 +340,8 @@ export default function createReduxForm(structure: Structure<any, any>) {
           return shouldValidateOverridden && !shouldErrorOverridden ? shouldValidate : shouldError
         }
 
-        validateIfNeeded = (nextProps: ?PropsWithContext): void => {
-          const { validate, values } = this.props
+        validateIfNeeded = (prevProps: PropsWithContext, nextProps: ?PropsWithContext): void => {
+          const { validate, values } = prevProps
           const shouldError = this.shouldErrorFunction()
           const fieldLevelValidate = this.generateValidator()
           if (validate || fieldLevelValidate) {
@@ -394,7 +350,7 @@ export default function createReduxForm(structure: Structure<any, any>) {
             const validateParams = {
               values,
               nextProps,
-              props: this.props,
+              props: prevProps,
               initialRender,
               lastFieldValidatorKeys: this.lastFieldValidatorKeys,
               fieldValidatorKeys,
@@ -402,7 +358,7 @@ export default function createReduxForm(structure: Structure<any, any>) {
             }
 
             if (shouldError(validateParams)) {
-              const propsToValidate = initialRender || !nextProps ? this.props : nextProps
+              const propsToValidate = initialRender || !nextProps ? prevProps : nextProps
               const { _error, ...nextSyncErrors } = merge(
                 validate ? validate(propsToValidate.values, propsToValidate) || {} : {},
                 fieldLevelValidate
@@ -444,8 +400,8 @@ export default function createReduxForm(structure: Structure<any, any>) {
           return shouldValidateOverridden && !shouldWarnOverridden ? shouldValidate : shouldWarn
         }
 
-        warnIfNeeded = (nextProps: ?PropsWithContext): void => {
-          const { warn, values } = this.props
+        warnIfNeeded = (prevProps: PropsWithContext, nextProps: ?PropsWithContext): void => {
+          const { warn, values } = prevProps
           const shouldWarn = this.shouldWarnFunction()
           const fieldLevelWarn = this.generateWarner()
           if (warn || fieldLevelWarn) {
@@ -454,7 +410,7 @@ export default function createReduxForm(structure: Structure<any, any>) {
             const validateParams = {
               values,
               nextProps,
-              props: this.props,
+              props: prevProps,
               initialRender,
               lastFieldValidatorKeys: this.lastFieldWarnerKeys,
               fieldValidatorKeys: fieldWarnerKeys,
@@ -462,7 +418,7 @@ export default function createReduxForm(structure: Structure<any, any>) {
             }
 
             if (shouldWarn(validateParams)) {
-              const propsToWarn = initialRender || !nextProps ? this.props : nextProps
+              const propsToWarn = initialRender || !nextProps ? prevProps : nextProps
               const { _warning, ...nextSyncWarnings } = merge(
                 warn ? warn(propsToWarn.values, propsToWarn) : {},
                 fieldLevelWarn ? fieldLevelWarn(propsToWarn.values, propsToWarn) : {}
@@ -474,13 +430,22 @@ export default function createReduxForm(structure: Structure<any, any>) {
         }
 
         UNSAFE_componentWillReceiveProps(nextProps: PropsWithContext): void {
-          const isValueReset = this.initIfNeeded(nextProps)
-          // initialize will dispatch a redux action and call componentWillReceiveProps again; hence we can skip reinitialize if needed.
-          if (isValueReset) return
-          this.validateIfNeeded(nextProps)
-          this.warnIfNeeded(nextProps)
-          this.clearSubmitPromiseIfNeeded(nextProps)
-          this.submitIfNeeded(nextProps)
+          // const isValueReset = this.initIfNeeded(this.props, nextProps)
+          // // initialize will dispatch a redux action and call componentWillReceiveProps again; hence we can skip reinitialize if needed.
+          // if (isValueReset) return
+          this.validateIfNeeded(this.props, nextProps)
+          this.warnIfNeeded(this.props, nextProps)
+        }
+
+        componentDidUpdate(prevProps: PropsWithContext): void {
+          if (this.submitPromise && prevProps.submitting && !this.props.submitting) {
+            delete this.submitPromise
+          }
+
+          if (!prevProps.triggerSubmit && this.props.triggerSubmit) {
+            this.props.clearSubmit()
+            this.submit()
+          }
         }
 
         shouldComponentUpdate(nextProps: PropsWithContext): boolean {
@@ -509,11 +474,8 @@ export default function createReduxForm(structure: Structure<any, any>) {
 
         componentDidMount(): void {
           if (!isHotReloading()) {
-            // initialize in constructor function will dispatch a redux action and call componentWillReceiveProps which checks for validate;
-            // hence we can skip validate and warning if initialize has been triggered in constructor
-            if (this.initializedOnLoad) return
-            this.validateIfNeeded()
-            this.warnIfNeeded()
+            this.validateIfNeeded(this.props)
+            this.warnIfNeeded(this.props)
           }
           invariant(
             this.props.shouldValidate,
@@ -914,10 +876,49 @@ export default function createReduxForm(structure: Structure<any, any>) {
         registeredFields: PropTypes.any
       }
 
-      class OnChangeWrapper extends React.Component {
+      /**
+       * This wrapper is needed for the effects after update. Since the Form component
+       * does not rerender on every change, componentDidUpdate is not always called.
+       */
+      class EffectWrapper extends React.Component {
+        initIfNeeded = (prevProps: PropsWithContext, nextProps: ?PropsWithContext): boolean => {
+          const { enableReinitialize } = prevProps
+          if (nextProps) {
+            if (
+              (enableReinitialize || !nextProps.initialized) &&
+              !deepEqual(prevProps.initialValues, nextProps.initialValues)
+            ) {
+              const keepDirty = nextProps.initialized && prevProps.keepDirtyOnReinitialize
+              prevProps.initialize(nextProps.initialValues, keepDirty, {
+                keepValues: nextProps.keepValues,
+                lastInitialValues: prevProps.initialValues,
+                updateUnregisteredFields: nextProps.updateUnregisteredFields
+              })
+              return true
+            }
+          } else if (prevProps.initialValues && (!prevProps.initialized || enableReinitialize)) {
+            prevProps.initialize(prevProps.initialValues, prevProps.keepDirtyOnReinitialize, {
+              keepValues: prevProps.keepValues,
+              updateUnregisteredFields: prevProps.updateUnregisteredFields
+            })
+            return true
+          }
+          return false
+        }
+
+        constructor(props, ...args) {
+          super(props, ...args)
+          if (!isHotReloading()) {
+            this.initIfNeeded(props)
+          }
+        }
+
         componentDidUpdate(prevProps) {
           const { onChange, values, dispatch } = this.props
           // console.log('componentDidUpdate', { oldValues: prevProps.values, newValues: values })
+          if (!isHotReloading()) {
+            this.initIfNeeded(prevProps, this.props)
+          }
 
           if (onChange && !deepEqual(values, prevProps.values)) {
             onChange(values, dispatch, this.props, prevProps.values)
@@ -1042,7 +1043,7 @@ export default function createReduxForm(structure: Structure<any, any>) {
         // { forwardRef: true }
       )
       const ConnectedForm = hoistStatics<any, any, any, any>(
-        connector(OnChangeWrapper),
+        connector(EffectWrapper),
         WrappedComponent
       )
       ConnectedForm.defaultProps = config
