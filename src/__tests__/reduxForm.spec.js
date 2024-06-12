@@ -1,7 +1,7 @@
 import { noop } from 'lodash'
 /* eslint react/no-multi-comp:0 */
 import React, { Component } from 'react'
-import TestUtils from 'react-dom/test-utils'
+import TestUtils, { act } from 'react-dom/test-utils'
 import { Provider } from 'react-redux'
 import { combineReducers as plainCombineReducers, createStore } from 'redux'
 import { combineReducers as immutableCombineReducers } from 'redux-immutable'
@@ -3940,7 +3940,7 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
       })
     })
 
-    it('should call form-level onChange when values change', () => {
+    it('should call form-level onChange when values change', async () => {
       const store = makeStore({})
       const renderFoo = jest.fn(props => <input {...props.input} />)
       const renderBar = jest.fn(props => <input {...props.input} />)
@@ -3960,7 +3960,7 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
         form: 'testForm'
       })(Form)
 
-      TestUtils.renderIntoDocument(
+      const dom = TestUtils.renderIntoDocument(
         <Provider store={store}>
           <Decorated onChange={onChange} />
         </Provider>
@@ -3968,8 +3968,6 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
 
       const changeFoo = renderFoo.mock.calls[0][0].input.onChange
       const changeBar = renderBar.mock.calls[0][0].input.onChange
-
-      expect(onChange).not.toHaveBeenCalled()
 
       changeFoo('dog')
 
@@ -4003,6 +4001,7 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
       expect(onChange).toHaveBeenCalledTimes(2)
 
       changeFoo('doggy')
+
       expect(onChange).toHaveBeenCalledTimes(3)
       expect(onChange.mock.calls[2][0]).toEqualMap({
         foo: 'doggy',

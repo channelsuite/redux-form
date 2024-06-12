@@ -271,6 +271,7 @@ type PropsWithContext = { _reduxForm?: ReactContext } & Props
 export default function createReduxForm(structure: Structure<any, any>) {
   const { deepEqual, empty, getIn, setIn, keys, fromJS, toJS } = structure
   const isValid = createIsValid(structure)
+
   return (initialConfig: Config) => {
     const config = {
       touchOnBlur: true,
@@ -480,15 +481,12 @@ export default function createReduxForm(structure: Structure<any, any>) {
           this.warnIfNeeded(nextProps)
           this.clearSubmitPromiseIfNeeded(nextProps)
           this.submitIfNeeded(nextProps)
-          const { onChange, values, dispatch } = nextProps
-          if (onChange && !deepEqual(values, this.props.values)) {
-            onChange(values, dispatch, nextProps, this.props.values)
-          }
         }
 
         shouldComponentUpdate(nextProps: PropsWithContext): boolean {
           if (!this.props.pure) return true
           const { immutableProps = [] } = config
+
           // if we have children, we MUST update in React 16
           // https://twitter.com/erikras/status/915866544558788608
           return !!(
@@ -499,11 +497,11 @@ export default function createReduxForm(structure: Structure<any, any>) {
               // if (!plain.deepEqual(this.props[ prop ], nextProps[ prop ])) {
               //   console.info(prop, 'changed', this.props[ prop ], '==>', nextProps[ prop ])
               // }
-              if (~immutableProps.indexOf(prop)) {
+              if (immutableProps.includes(prop)) {
                 return this.props[prop] !== nextProps[prop]
               }
               return (
-                !~propsToNotUpdateFor.indexOf(prop) && !deepEqual(this.props[prop], nextProps[prop])
+                !propsToNotUpdateFor.includes(prop) && !deepEqual(this.props[prop], nextProps[prop])
               )
             })
           )
@@ -916,6 +914,22 @@ export default function createReduxForm(structure: Structure<any, any>) {
         registeredFields: PropTypes.any
       }
 
+      class OnChangeWrapper extends React.Component {
+        componentDidUpdate(prevProps) {
+          const { onChange, values, dispatch } = this.props
+          // console.log('componentDidUpdate', { oldValues: prevProps.values, newValues: values })
+
+          if (onChange && !deepEqual(values, prevProps.values)) {
+            onChange(values, dispatch, this.props, prevProps.values)
+          }
+        }
+
+        render() {
+          const { formRef, ...rest } = this.props
+          return <Form {...rest} ref={formRef} />
+        }
+      }
+
       const connector = connect(
         (state, props) => {
           const {
@@ -1023,11 +1037,14 @@ export default function createReduxForm(structure: Structure<any, any>) {
             focus: boundFocus,
             dispatch
           }
-        },
-        undefined,
-        { forwardRef: true }
+        }
+        // undefined,
+        // { forwardRef: true }
       )
-      const ConnectedForm = hoistStatics<any, any, any, any>(connector(Form), WrappedComponent)
+      const ConnectedForm = hoistStatics<any, any, any, any>(
+        connector(OnChangeWrapper),
+        WrappedComponent
+      )
       ConnectedForm.defaultProps = config
 
       // build outer component to expose instance api
@@ -1076,9 +1093,11 @@ export default function createReduxForm(structure: Structure<any, any>) {
 
         render() {
           const { initialValues, ...rest } = this.props
+
           return createElement(ConnectedForm, {
             ...rest,
-            ref: this.ref,
+            formRef: this.ref,
+            // ref: this.ref,
             // convert initialValues if need to
             initialValues: fromJS(initialValues)
           })
