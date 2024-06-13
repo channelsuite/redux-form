@@ -3940,7 +3940,7 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
       })
     })
 
-    it('should call form-level onChange when values change', async () => {
+    it('should call form-level onChange when values change', () => {
       const store = makeStore({})
       const renderFoo = jest.fn(props => <input {...props.input} />)
       const renderBar = jest.fn(props => <input {...props.input} />)
@@ -3968,6 +3968,8 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
 
       const changeFoo = renderFoo.mock.calls[0][0].input.onChange
       const changeBar = renderBar.mock.calls[0][0].input.onChange
+
+      expect(onChange).not.toHaveBeenCalled()
 
       changeFoo('dog')
 
@@ -4001,7 +4003,6 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
       expect(onChange).toHaveBeenCalledTimes(2)
 
       changeFoo('doggy')
-
       expect(onChange).toHaveBeenCalledTimes(3)
       expect(onChange.mock.calls[2][0]).toEqualMap({
         foo: 'doggy',
