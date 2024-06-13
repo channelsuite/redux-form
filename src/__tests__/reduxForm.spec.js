@@ -1,7 +1,7 @@
 import { noop } from 'lodash'
 /* eslint react/no-multi-comp:0 */
 import React, { Component } from 'react'
-import TestUtils, { act } from 'react-dom/test-utils'
+import TestUtils from 'react-dom/test-utils'
 import { Provider } from 'react-redux'
 import { combineReducers as plainCombineReducers, createStore } from 'redux'
 import { combineReducers as immutableCombineReducers } from 'redux-immutable'
@@ -3960,7 +3960,7 @@ const describeReduxForm = (name, structure, combineReducers, setup) => {
         form: 'testForm'
       })(Form)
 
-      const dom = TestUtils.renderIntoDocument(
+      TestUtils.renderIntoDocument(
         <Provider store={store}>
           <Decorated onChange={onChange} />
         </Provider>
